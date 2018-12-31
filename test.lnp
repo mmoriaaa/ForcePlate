@@ -1,0 +1,12 @@
+"STARTUP.obj",
+"main.obj",
+"num.obj",
+"adc.obj",
+"ntc_temp.obj",
+"pcf8563.obj",
+"i2c1.obj",
+"ADS1110.obj",
+"I2C2.obj",
+"uart.obj" 
+TO "test" 
+RAMSIZE(256) 

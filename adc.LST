@@ -1,0 +1,138 @@
+C51 COMPILER V9.53.0.0   ADC                                                               12/29/2018 16:30:00 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE ADC
+OBJECT MODULE PLACED IN adc.OBJ
+COMPILER INVOKED BY: F:\Keil_v5\C51\BIN\C51.EXE adc.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          /************************************************************************************
+   2          *
+   3          * 功能说明：ADC的操作函数。
+   4          * 作者信息：品诺电子(http://free-design.taobao.com)
+   5          *
+   6          ************************************************************************************/
+   7          #include "stc15f2k60s2.h"
+   8          #include "my_type.h"
+   9          #include "adc.h"
+  10          
+  11          /*Define ADC operation const for ADC_CONTR*/ 
+  12          #define ADC_POWER   0x80            //ADC power control bit 模数转换电源控制位 
+  13          #define ADC_FLAG    0x10            //ADC complete flag   模数转换结束标志位 
+  14          #define ADC_START   0x08            //ADC start control bit 模数转换启动控制位 
+  15          
+  16          //转换速度控制位SPEED0和SPEED1，共四种状态，对应四种转换速度 
+  17          #define ADC_SPEEDLL 0x00            //540 个时钟  
+  18          #define ADC_SPEEDL  0x20            //360 个时钟 
+  19          #define ADC_SPEEDH  0x40            //180 个时钟 
+  20          #define ADC_SPEEDHH 0x60            //90 个时钟  
+  21          
+  22          volatile u16 adcData=0;
+  23          volatile u8 adcUpdatedFlag=0;
+  24          
+  25          /********************************************************************
+  26          函数功能：延时函数。
+  27          入口参数：无。
+  28          返    回：无。
+  29          备    注：无。
+  30          ********************************************************************/
+  31          void Delay500us(void)   //误差 -0.01439525463us
+  32          {
+  33   1          unsigned char a,b,n;
+  34   1          for(b=11;b>0;b--)
+  35   1              for(a=250;a>0;a-- );
+  36   1          for(n=1;n>0;n--);
+  37   1      }
+  38          /**///////////////////////Pino Electronics////////////////////////**/
+  39          
+  40          /********************************************************************
+  41          函数功能：初始化ADC。     
+  42          入口参数：ch:选择要初始化的ADC通道。
+  43          返    回：无。
+  44          备    注：无。 
+  45          ********************************************************************/
+  46          void InitADC(u8 ch)
+  47          {
+  48   1        EADC=0;       //关闭ADC中断
+  49   1        P1ASF=0xC1;   //设置P1.0,P1,6,P1.7为ADC引脚，P1ASF为只写寄存器，读取无效
+  50   1        ADC_RES=0;    //清除结果寄存器
+  51   1        ADC_CONTR=ADC_POWER|ADC_SPEEDLL|ADC_START|ch;
+  52   1        Delay500us();   //等待稳定
+  53   1        EADC=1;       //允许ADC中断
+  54   1      }
+  55          /**///////////////////////Pino Electronics////////////////////////**/
+C51 COMPILER V9.53.0.0   ADC                                                               12/29/2018 16:30:00 PAGE 2   
+
+  56          
+  57          /********************************************************************
+  58          函数功能：ADC的中断服务程序。
+  59          入口参数：无。
+  60          返    回：无。
+  61          备    注：注意手动清除标志位。
+  62          ********************************************************************/
+  63          void AdcISR (void) interrupt 5
+  64          {
+  65   1        static u32 accumulator = 0;   //AD转换结果累加和
+  66   1        static u16 measurements = 0;  //AD转换次数计数
+  67   1        
+  68   1        ADC_CONTR&=(~ADC_FLAG);         //清除ADC转换完成标志位
+  69   1        //accumulator += ((ADC_RES<<2)+ADC_RESL);   //AD转换结果累加
+  70   1        accumulator += ADC_RES;
+  71   1        measurements++;
+  72   1        
+  73   1        if(measurements == 10){   //1000次AD转换完成后取平均值
+  74   2          measurements = 0;
+  75   2          adcData =  accumulator/10;  //求平均值写入adcData
+  76   2          adcUpdatedFlag=1;           //设置ADC结果更新标志位
+  77   2          accumulator=0;
+  78   2        }else{
+  79   2          ADC_CONTR|=ADC_START;           //开启下一次AD转换
+  80   2        }
+  81   1      }
+  82          /**///////////////////////Pino Electronics////////////////////////**/
+  83          
+  84          /********************************************************************
+  85          函数功能：查询adcUpdatedFlag标志位。
+  86          入口参数：无。
+  87          返    回：u8:标志位有效，则返回1，否则返回0。
+  88          备    注：无。
+  89          ********************************************************************/
+  90          u8 GetAdcUpdatedFlag(void)
+  91          {
+  92   1        if(adcUpdatedFlag){
+  93   2          adcUpdatedFlag=0;//清除标志位
+  94   2          return 1;
+  95   2        }else{
+  96   2          return 0;
+  97   2        }
+  98   1      }
+  99          /**///////////////////////Pino Electronics////////////////////////**/
+ 100          
+ 101          /********************************************************************
+ 102          函数功能：查询adcData。
+ 103          入口参数：无。
+ 104          返    回：adcData。
+ 105          备    注：无。
+ 106          ********************************************************************/
+ 107          u16 GetAdcData(void)
+ 108          {
+ 109   1          return adcData;
+ 110   1      }
+ 111          /**///////////////////////Pino Electronics////////////////////////**/
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    193    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+C51 COMPILER V9.53.0.0   ADC                                                               12/29/2018 16:30:00 PAGE 3   
+
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      9    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

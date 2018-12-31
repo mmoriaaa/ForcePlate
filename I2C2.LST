@@ -1,0 +1,200 @@
+C51 COMPILER V9.53.0.0   I2C2                                                              12/29/2018 16:30:01 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE I2C2
+OBJECT MODULE PLACED IN I2C2.OBJ
+COMPILER INVOKED BY: F:\Keil_v5\C51\BIN\C51.EXE I2C2.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          /**************************************************************************************
+   2          *功能：IIC协议的通信代码                                                                *
+   3          *特别说明：无                                                                         *
+   4          *作者：科睿研发中心                                                                   *
+   5          *公司：科睿电子产品有限公司                                                             * 
+   6          *电话：0530-2897239   15192459227                                                     *
+   7          ***************************************************************************************/
+   8          
+   9          #include "stc15f2k60s2.h"
+  10          #include "I2C2.h"
+  11          
+  12          #define IIC_SCL   P40     /* 连接到SCL时钟线的GPIO */
+  13          #define IIC_SDA   P41     /* 连接到SDA数据线的GPIO */
+  14          
+  15          /***************************************
+  16          函数名称：void IIC_NOP(void)
+  17          函数说明：延时函数
+  18          其他：无
+  19          ***************************************/ 
+  20          void IIC_NOP(void)  
+  21          {;;}  
+  22            
+  23            
+  24          /***************************************
+  25          函数名称：void IIC_DelayXms(unsigned char x)
+  26          函数说明：延时函数
+  27          其他：延时1-255ms
+  28          ***************************************/ 
+  29          void IIC_DelayXms(unsigned char x)  
+  30          {  
+  31   1        unsigned char y,z;  
+  32   1        for(y=x;y>0;y--)  
+  33   1            for(z=110;z>0;z--);  
+  34   1      }   
+  35          
+  36          /***************************************
+  37          函数名称：void IIC_Init(void)  
+  38          函数说明：IIC端口初始化函数
+  39          其他：无
+  40          ***************************************/ 
+  41          void IIC_Init(void)  
+  42          {  
+  43   1        IIC_SDA = 1;  
+  44   1        IIC_SCL = 1;  
+  45   1        IIC_NOP();  
+  46   1      }  
+  47          
+  48          
+  49          /***************************************
+  50          函数名称：void IIC_Start(void)  
+  51          函数说明：IIC起始信号
+  52          其他：无
+  53          ***************************************/ 
+  54          void IIC_Start(void)  
+  55          {  
+C51 COMPILER V9.53.0.0   I2C2                                                              12/29/2018 16:30:01 PAGE 2   
+
+  56   1        IIC_SDA = 1;  
+  57   1        IIC_NOP();  
+  58   1        IIC_SCL = 1;  
+  59   1        IIC_NOP();  
+  60   1        IIC_SDA = 0;  
+  61   1        IIC_NOP();  
+  62   1      }  
+  63          
+  64          /***************************************
+  65          函数名称：void IIC_Stop(void)  
+  66          函数说明：IIC终止信号
+  67          其他：无
+  68          ***************************************/ 
+  69          void IIC_Stop(void)  
+  70          {  
+  71   1        IIC_SDA = 0;  
+  72   1        IIC_NOP();  
+  73   1        IIC_SCL = 1;  
+  74   1        IIC_NOP();  
+  75   1        IIC_SDA = 1;  
+  76   1        IIC_NOP();  
+  77   1      }  
+  78          
+  79          /***************************************
+  80          函数名称void IIC_SendAck(unsigned char ack)   
+  81          函数说明：IIC主机发送应答信号
+  82          其他： ack=0为连续读  ack=1为不连续读
+  83          ***************************************/ 
+  84          void IIC_SendAck(unsigned char ack)  
+  85          {  
+  86   1        IIC_SCL = 0;  
+  87   1        IIC_NOP();  
+  88   1        IIC_SDA = ack;  
+  89   1        IIC_NOP();  
+  90   1        IIC_SCL = 1;  
+  91   1        IIC_NOP();  
+  92   1        IIC_SCL = 0;  
+  93   1        IIC_NOP();  
+  94   1        IIC_SDA = 1;  
+  95   1        IIC_NOP();  
+  96   1      }  
+  97          
+  98          /***************************************
+  99          函数名称：unsigned char IIC_RecAck(void)   
+ 100          函数说明：IIC主机接收应答信号  
+ 101          其他：无
+ 102          ***************************************/ 
+ 103          unsigned char IIC_RecAck(void)  
+ 104          {  
+ 105   1          IIC_SCL = 1;  
+ 106   1          IIC_NOP();  
+ 107   1          if(IIC_SDA == 1)  
+ 108   1          {  
+ 109   2            IIC_SCL = 0;  
+ 110   2            IIC_DelayXms(1);  
+ 111   2            IIC_SCL = 1;  
+ 112   2            if(IIC_SDA == 1)  
+ 113   2            {
+ 114   3              return 1; 
+ 115   3            }         
+ 116   2          }  
+ 117   1          else  
+C51 COMPILER V9.53.0.0   I2C2                                                              12/29/2018 16:30:01 PAGE 3   
+
+ 118   1          {
+ 119   2            return 0;  
+ 120   2          }
+ 121   1      }  
+ 122          /***************************************
+ 123          函数名称：void IIC_WriteByte(unsigned char dat)   
+ 124          函数说明：IIC写一个字节  
+ 125          其他：无
+ 126          ***************************************/ 
+ 127          void IIC_WriteByte(unsigned char dat)  
+ 128          {  
+ 129   1          unsigned char i,a;  
+ 130   1          a = dat;  
+ 131   1          for(i=0;i<8;i++)  
+ 132   1          {  
+ 133   2              a = a<<1;  
+ 134   2              IIC_SCL = 0;  
+ 135   2              IIC_NOP();  
+ 136   2              IIC_SDA = CY;  //具体请查阅51单片机的CY位
+ 137   2              IIC_NOP();  
+ 138   2              IIC_SCL = 1;  
+ 139   2              IIC_NOP();  
+ 140   2          }  
+ 141   1          IIC_SCL = 0;  
+ 142   1          IIC_NOP();  
+ 143   1          IIC_SDA = 1;  
+ 144   1          IIC_NOP();  
+ 145   1      }  
+ 146          
+ 147          /***************************************
+ 148          函数名称：unsigned char IIC_ReadByte(void)    
+ 149          函数说明：IIC读一个字节  
+ 150          其他：无
+ 151          ***************************************/ 
+ 152          unsigned char IIC_ReadByte(void)  
+ 153          {  
+ 154   1          unsigned char i,a;  
+ 155   1          IIC_SCL = 0;  
+ 156   1          IIC_NOP();  
+ 157   1          IIC_SDA = 1;  
+ 158   1          IIC_NOP();  
+ 159   1          for(i=0;i<8;i++)  
+ 160   1          {  
+ 161   2              IIC_SCL = 1;  
+ 162   2              IIC_NOP();  
+ 163   2              a = (a<<1)|IIC_SDA;  
+ 164   2              IIC_SCL = 0;  
+ 165   2              IIC_NOP();  
+ 166   2          }  
+ 167   1          return a;  
+ 168   1      }  
+ 169          
+ 170          
+*** WARNING C291 IN LINE 121 OF I2C2.c: not every exit path returns a value
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    161    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+C51 COMPILER V9.53.0.0   I2C2                                                              12/29/2018 16:30:01 PAGE 4   
+
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,209 @@
+C51 COMPILER V9.53.0.0   ADS1110                                                           12/29/2018 16:30:00 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE ADS1110
+OBJECT MODULE PLACED IN ADS1110.OBJ
+COMPILER INVOKED BY: F:\Keil_v5\C51\BIN\C51.EXE ADS1110.C OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          /**************************************************************************************
+   2          *功能：ADS1110模块连续读测试例程                                                        *
+   3          *特别说明：VCC         2.7V-5.5V                                                        *
+   4          *         VIN+ VIN-   压差不超过4.096V                                                  *
+   5          *         满量程       -2.048V   +2.048V                                                *
+   6          *作者：科睿研发中心                                                                   *
+   7          *公司：科睿电子产品有限公司                                                             * 
+   8          *电话：0530-2897239   15192459227                                                     *
+   9          ***************************************************************************************/
+  10          
+  11          #include "stc15f2k60s2.h"
+  12          #include "I2C2.h"
+  13          #include "ADS1110.h"
+  14          #include "num.h"
+  15          
+  16          #define ADS1110_ST  0x80  //ADS1110写入数据
+  17          #define ADS1110_DR  0x00  //ADS1110转换速率设置  0x0C为15SPS  0x08为30SPS  0x04为60SPS  0x00为240SPS
+  18          #define ADS1110_PGA 0x00  //ADS1110增益倍数设置  0x00为x1  0x01为x2  0x02为x4  0x03为x8
+  19          
+  20          #define VREF 2.048F        //参考电压
+  21          unsigned int MinCode=2048;//最小码
+  22          unsigned int PGA_Num=1;    //放大倍数
+  23          
+  24          /***************************************
+  25          函数名称：void Uart_Init(void)
+  26          函数说明：串口初始化函数
+  27          其他：波特率9600
+  28          ***************************************/
+  29          void Uart_Init(void)
+  30          {
+  31   1        TMOD=0x21;   //设T0为方式1，GATE=1；
+  32   1        SCON=0x50;
+  33   1        TH1=0xFD;
+  34   1        TL1=0xFD;
+  35   1        TH0=0;
+  36   1        TL0=0; 
+  37   1        TR0=1;  
+  38   1        ET0=1;        //允许T0中断
+  39   1        TR1=1;        //开启定时器
+  40   1        TI=1;
+  41   1      
+  42   1        EA=1;         //开启总中断
+  43   1      }
+  44          
+  45          /***************************************
+  46          函数名称：void Delay100ms(void)
+  47          函数说明：软件延时函数
+  48          其他：延时时间100ms
+  49          ***************************************/
+  50          void Delay100ms(void) 
+  51          {
+  52   1        unsigned char i, j;
+  53   1      
+  54   1        i = 180;
+  55   1        j = 73;
+C51 COMPILER V9.53.0.0   ADS1110                                                           12/29/2018 16:30:00 PAGE 2   
+
+  56   1        do
+  57   1        {
+  58   2          while (--j);
+  59   2        } while (--i);
+  60   1      }
+  61          
+  62          /***************************************
+  63          函数名称：void Uart_SendData(unsigned char d)
+  64          函数说明：串口发送函数
+  65          其他：d为要发送的字节
+  66          ***************************************/
+  67          void Uart_SendData(unsigned char d)
+  68          {
+  69   1        
+  70   1        SBUF=d;
+  71   1        while(!TI);
+  72   1        TI=0;
+  73   1      }
+  74          
+  75          /***************************************
+  76          函数名称：void Uart_SendNum(int n)
+  77          函数说明：串口发送数字
+  78          其他：n为要发送的数字
+  79          ***************************************/
+  80          void Uart_SendNum(int n)
+  81          {
+  82   1        if (n<0)
+  83   1        {
+  84   2          Uart_SendData('-');
+  85   2          n*=-1;
+  86   2        }
+  87   1        Uart_SendData(n/1000+0x30);
+  88   1        Uart_SendData('.');
+  89   1        Uart_SendData(n%1000/100+0x30);
+  90   1        Uart_SendData(n%100/10+0x30);
+  91   1        Uart_SendData(n%10+0x30);
+  92   1        Uart_SendData('V');
+  93   1        Uart_SendData('\r');
+  94   1        Uart_SendData('\n');
+  95   1      }
+  96          
+  97          /***************************************
+  98          函数名称：void ADS1110_Config(void)
+  99          函数说明：ADS1110参数配置函数
+ 100          其他：根据实际需要修改程序最上方的#define宏定义
+ 101          ***************************************/
+ 102          void ADS1110_Config(void)
+ 103          {
+ 104   1        IIC_Start();
+ 105   1        IIC_WriteByte(0x90);
+ 106   1        IIC_SendAck(1);
+ 107   1        IIC_WriteByte(ADS1110_ST|ADS1110_DR|ADS1110_PGA);
+ 108   1        IIC_SendAck(1);
+ 109   1        IIC_Stop(); 
+ 110   1      }
+ 111          
+ 112          /***************************************
+ 113          函数名称：void ADS1110_SetValue(void)
+ 114          函数说明：输出码转换为电压值需要的几个关键参数设置
+ 115          其他：与最上方的#define宏定义一致
+ 116          ***************************************/
+ 117          void ADS1110_SetValue(void)
+C51 COMPILER V9.53.0.0   ADS1110                                                           12/29/2018 16:30:00 PAGE 3   
+
+ 118          {
+ 119   1        switch (ADS1110_DR)
+ 120   1        {
+ 121   2          case 0x0C://15SPS
+ 122   2          {
+ 123   3            MinCode=32768;
+ 124   3          }break;
+ 125   2          case 0x08://30SPS
+ 126   2          {
+ 127   3            MinCode=16384;
+ 128   3          }break;
+ 129   2          case 0x04://60SPS
+ 130   2          {
+ 131   3            MinCode=8192;
+ 132   3          }break;
+ 133   2          case 0x00://240SPS
+ 134   2          {
+ 135   3            MinCode=2048;
+ 136   3          }break;
+ 137   2          default:break;
+ 138   2        }
+ 139   1        switch (ADS1110_PGA)
+ 140   1        {
+ 141   2          case 0x00:
+ 142   2          {
+ 143   3            PGA_Num=1;
+ 144   3          }break;
+ 145   2          case 0x01:
+ 146   2          {
+ 147   3            PGA_Num=2;
+ 148   3          }break;
+ 149   2          case 0x02:
+ 150   2          {
+ 151   3            PGA_Num=4;
+ 152   3          }break;
+ 153   2          case 0x03:
+ 154   2          {
+ 155   3            PGA_Num=8;
+ 156   3          }break;
+ 157   2          default:break;
+ 158   2        }
+ 159   1      }
+ 160          
+ 161          /***************************************
+ 162          函数名称：unsigned int ADS1110_ReadADValue(void)
+ 163          函数说明：读取ADS1110的输出码
+ 164          其他：无
+ 165          ***************************************/
+ 166          u16 ADS1110_ReadADValue(void)
+ 167          {
+ 168   1        u16 result;
+ 169   1        
+ 170   1        IIC_Start();
+ 171   1        IIC_WriteByte(0x93);//发送ED0地址和读操作命令,ED1为#93H、ED2为#95H、ED3为#97H
+ 172   1        while(IIC_RecAck());
+ 173   1        result=IIC_ReadByte();
+ 174   1        result<<=8;
+ 175   1        IIC_SendAck(0);
+ 176   1        result|=IIC_ReadByte();
+ 177   1        IIC_SendAck(1);
+ 178   1        IIC_Stop();
+ 179   1        return result;
+C51 COMPILER V9.53.0.0   ADS1110                                                           12/29/2018 16:30:00 PAGE 4   
+
+ 180   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    333    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      4       2
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

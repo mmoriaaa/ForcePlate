@@ -1,0 +1,44 @@
+C51 COMPILER V9.53.0.0   NTC_TEMP                                                          12/29/2018 16:30:00 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE NTC_TEMP
+OBJECT MODULE PLACED IN ntc_temp.OBJ
+COMPILER INVOKED BY: F:\Keil_v5\C51\BIN\C51.EXE ntc_temp.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          /************************************************************************************
+   2          *
+   3          * 功能说明：NTC_TEMP的操作函数。
+   4          * 作者信息：品诺电子(http://free-design.taobao.com)
+   5          *
+   6          ************************************************************************************/
+   7          #include "stc15f2k60s2.h"
+   8          #include "my_type.h"
+   9          
+  10          /********************************************************************
+  11          函数功能：将传入的ADC值通过查表的方法，转换成对应的温度值。
+  12          入口参数：u16 adcDat：传入的ADC值。
+  13          返    回：u8 对应的温度值。
+  14          备    注：无。
+  15          ********************************************************************/
+  16          u16 AdcDatToTemp(u16 adcDat)
+  17          {
+  18   1        return adcDat;
+  19   1      }
+  20          /**///////////////////////Pino Electronics////////////////////////**/
+  21          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =      1    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,358 @@
+C51 COMPILER V9.53.0.0   MAIN                                                              12/29/2018 16:30:00 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: F:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          /************************************************************************************
+   2          *
+   3          * ÊµÑéÆ½Ì¨£ºÆ·Åµµç×ÓSTC15W4KºËÐÄ°å + Æ·Åµµç×Ó"¿ªÍØÕß"À©Õ¹°å
+   4          * Ê±ÖÓÑ¡Ôñ£ºÄÚ²¿IRCÊ±ÖÓ22.1184M
+   5          * ¹¦ÄÜËµÃ÷£º¸ÃÊµÑéÍ¨¹ýADC¹¦ÄÜ£¬Ê¹ÓÃÀ©Õ¹°åÉÏµÄÎÂÃôµç×è²âÁ¿µ±Ç°ÎÂ¶È£¬ÎÂ¶ÈÖµÏÔÊ¾ÔÚÊý
+   6                      Âë¹ÜÉÏ¡£ÎÂÃôµç×èÏà¶ÔÓÚDS18B20ÎÂ¶È´«¸ÐÆ÷£¬¼Û¸ñµÍµÄ¶à¡£
+   7          * ×÷ÕßÐÅÏ¢£ºÆ·Åµµç×Ó(http://free-design.taobao.com)
+   8          *
+   9          ************************************************************************************/
+  10          
+  11          #include "stc15f2k60s2.h"
+  12          #include "my_type.h"
+  13          #include "main.h"
+  14          #include "num.h"
+  15          #include "adc.h"
+  16          #include "ntc_temp.h"
+  17          #include "i2c1.h"
+  18          #include "pcf8563.h"
+  19          #include "ADS1110.h"
+  20          // #include "uart.h"
+  21          #include  <stdio.h>           // Keil library 
+  22          
+  23          sbit SD_BUSY = P2^4;
+  24          sbit SD_STATUS = P2^5;
+  25          
+  26          #define BAUDRATE  115200UL 
+  27          
+  28          volatile u8 uart3SendingFlag=0;   //È«¾Ö±äÁ¿£¬±êÖ¾´®¿ÚÊÇ·ñÕý´¦ÓÚ·¢ËÍÖÐ(Ã¦×´Ì¬)
+  29          volatile u8 uart3ReceivedFlag=0;    //È«¾Ö±äÁ¿£¬±êÖ¾´®¿ÚÒÑ½ÓÊÕµ½Êý¾Ý
+  30          volatile u8 uart3Buf; //È«¾Ö±äÁ¿£¬ÓÃÓÚ´æ·Å´Ó´®¿Ú½ÓÊÕµ½µÄÊý¾Ý
+  31          
+  32          u8 xdata Data_Buffer[60];
+  33          u8 xdata Data_Buffer2[30];
+  34          
+  35          
+  36          /********************************************************************
+  37          º¯Êý¹¦ÄÜ£ºÑÓÊ±º¯Êý¡£
+  38          Èë¿Ú²ÎÊý£ºÎÞ¡£
+  39          ·µ    »Ø£ºÎÞ¡£
+  40          ±¸    ×¢£ºÎÞ¡£
+  41          ********************************************************************/
+  42          void Delay20ms(void)   //Îó²î -0.000000000004us
+  43          {
+  44   1          u8 a,b,c;
+  45   1          for(c=191;c>0;c--)
+  46   1              for(b=231;b>0;b--)
+  47   1                  for(a=1;a>0;a--);
+  48   1      }
+  49          
+  50          void DelayForAD(void)   //Îó²î -0.000000000004us
+  51          {
+  52   1          u8 a,b,c;
+  53   1          for(c=100;c>0;c--)
+  54   1              for(b=100;b>0;b--)
+  55   1                  for(a=1;a>0;a--);
+C51 COMPILER V9.53.0.0   MAIN                                                              12/29/2018 16:30:00 PAGE 2   
+
+  56   1      }
+  57          
+  58          void Delay(void) {
+  59   1        u8 a,b,c;
+  60   1        for(c=100;c>0;c--)
+  61   1           for(a=1;a>0;a--);
+  62   1      }
+*** WARNING C280 IN LINE 59 OF main.c: 'b': unreferenced local variable
+  63          
+  64          /********************************************************************/
+  65          void InitUart3(void)
+  66          {
+  67   1        /*³õÊ¼»¯¶¨Ê±Æ÷3*/ 
+  68   1        //TMOD &= 0xCF;
+  69   1        T4T3M &= 0xFB;
+  70   1        T4T3M |= 0x02;      //¶¨Ê±Æ÷3Îª1TÄ£Ê½
+  71   1        T3H=(65536-(SYSCLK/4/BAUDRATE))>>8;   //³õÊ¼»¯Timer3ÖØÔØÖµ
+  72   1        T3L=(65536-(SYSCLK/4/BAUDRATE));    //³õÊ¼»¯Timer3ÖØÔØÖµ
+  73   1        T4T3M |= 0x08;      //¶¨Ê±Æ÷3¿ªÊ¼¼ÆÊ±
+  74   1        
+  75   1        /*³õÊ¼»¯´®¿Ú3*/
+  76   1        //Ä¬ÈÏ¹¤×÷·½Ê½0£¬8Î»UARTÄ£Ê½£¬²¨ÌØÂÊ¿                                                                    
+             -                                         É±ä£¬Ê¹ÓÃP00ºÍP01Òý½Å
+  77   1        S3CON|=0x40;      //Ñ¡Ôñ¶¨Ê±Æ÷3×÷Îª²¨ÌØÂÊ·¢ÉúÆ÷
+  78   1        S3CON|=0x10;        //´ò¿ª´®¿Ú3½ÓÊÕ
+  79   1        IE2|=0x08;          //´ò¿ª´®¿Ú3ÖÐ¶Ï
+  80   1      }
+  81          /**///////////////////////Pino Electronics////////////////////////**/
+  82          
+  83          /********************************************************************
+  84          º¯Êý¹¦ÄÜ£º·¢ËÍÒ»¸öbyteµÄÊý¾Ý¡£
+  85          Èë¿Ú²ÎÊý£ºx:´ý·¢ËÍµÄÊý¾Ý¡£
+  86          ·µ    »Ø£ºÎÞ¡£
+  87          ±¸    ×¢£ºÎÞ¡£
+  88          ********************************************************************/
+  89          void Printc(unsigned char x)
+  90          {
+  91   1        uart3SendingFlag=1;     //ÉèÖÃ·¢ËÍ±êÖ¾
+  92   1        S3BUF=x;        //½«Êý¾ÝÐ´Èëµ½´®¿Ú»º³å
+  93   1        while(uart3SendingFlag);  //µÈ´ý·¢ËÍÍê±Ï
+  94   1      }
+  95          void U3SendData(unsigned char ch)
+  96          {
+  97   1        uart3SendingFlag=1;     //ÉèÖÃ·¢ËÍ±êÖ¾
+  98   1        S3BUF = ch;                 //Ð´Êý¾Ýµ½UARTÊý¾Ý¼Ä´æÆ
+  99   1        while(uart3SendingFlag);  //µÈ´ý·¢ËÍÍê±Ï
+ 100   1      }
+ 101          
+ 102          void U3SendString(char *s)
+ 103          {
+ 104   1          while (*s)                  //¼ì²â×Ö·û´®½áÊø±êÖ¾
+ 105   1          {
+ 106   2              U3SendData(*s++);         //·¢ËÍµ±Ç°×Ö·û
+ 107   2              Delay();
+ 108   2          }
+ 109   1      }
+ 110          
+ 111          /********************************************************************
+ 112          º¯Êý¹¦ÄÜ£º¶ÔIAP15W4K£¬STC15W4KµÄIO¿Ú³õÊ¼»¯Îª×¼Ë«ÏòIO¿Ú¡£      
+ 113          Èë¿Ú²ÎÊý£ºÎÞ¡£
+ 114          ·µ    »Ø£ºÎÞ¡£
+ 115          ±¸    ×¢£ºSTC15W4KÏµÁÐµÄÐ¾Æ¬,ÉÏµçºóËùÓÐÓëPWMÏà¹ØµÄIO¿Ú£¨P0.6/P0.7
+C51 COMPILER V9.53.0.0   MAIN                                                              12/29/2018 16:30:00 PAGE 3   
+
+ 116                /P1.6/P1.7/P2.1/P2.2/P2.3/P2.7/P3.7/P4.2/P4.4/P4.5£©¾ùÎª¸ß
+ 117                ×èÌ¬,Ðè½«ÕâÐ©¿ÚÉèÖÃÎª×¼Ë«Ïò¿Ú»òÇ¿ÍÆÍìÄ£Ê½·½¿ÉÕý³£Ê¹ÓÃ¡£
+ 118          ********************************************************************/
+ 119          void InitIO(void)
+ 120          {
+ 121   1        //³õÊ¼»¯ P0 P1 P2 P3 P4 Îª×¼Ë«ÏòIO¿Ú
+ 122   1        P0M0 = 0x00;
+ 123   1        P0M1 = 0x00;
+ 124   1      
+ 125   1        P1M0 = 0x00;
+ 126   1        P1M1 = 0x00;
+ 127   1      
+ 128   1        P2M0 = 0x00;
+ 129   1        P2M1 = 0x00;
+ 130   1      
+ 131   1        P3M0 = 0x00;
+ 132   1        P3M1 = 0x00;
+ 133   1      
+ 134   1        P4M0 = 0x00;
+ 135   1        P4M1 = 0x00;  
+ 136   1      }
+ 137          /**///////////////////////Pino Electronics////////////////////////**/
+ 138          
+ 139          /********************************************************************
+ 140          º¯Êý¹¦ÄÜ£ºÖ÷º¯Êý¡£
+ 141          Èë¿Ú²ÎÊý£ºÎÞ¡£
+ 142          ·µ    »Ø£ºÎÞ¡£
+ 143          ±¸    ×¢£ºÎÞ¡£
+ 144          ********************************************************************/
+ 145          void main (void)
+ 146          {
+ 147   1        //Inner ADC Module
+ 148   1        u16 adcNum;
+ 149   1        //Time Module
+ 150   1        u16 dat;
+ 151   1        u8 second, minute;
+ 152   1        u8 secondDec, minuteDec;
+ 153   1        
+ 154   1        u8 key2DownFlag = 0;
+ 155   1        u8 key3DownFlag = 0;
+ 156   1        
+ 157   1        //Outer ADC Module
+ 158   1        u16 result;
+ 159   1        u16 result1, result2, result3, result4, result5, result6, result7, result8;
+ 160   1      
+ 161   1        u8 i;
+ 162   1        u8 j; //for dalay
+ 163   1        u16 times = 0;
+ 164   1        
+ 165   1        
+ 166   1        InitIO();
+ 167   1        InitTimer0();
+ 168   1        I2CInit();
+ 169   1        //InitADC(ADC_CHANNEL_TMP);
+ 170   1        //ADS
+ 171   1        IIC_Init();
+*** WARNING C206 IN LINE 171 OF main.c: 'IIC_Init': missing function-prototype
+ 172   1        ADS1110_Config();
+ 173   1        ADS1110_SetValue();
+ 174   1        
+ 175   1        InitUart3();
+ 176   1        
+C51 COMPILER V9.53.0.0   MAIN                                                              12/29/2018 16:30:00 PAGE 4   
+
+ 177   1        EA=1;       //ÔÊÐíËùÓÐÖÐ¶Ï
+ 178   1      
+ 179   1        while(1){
+ 180   2          if((key3DownFlag==0)&&(IsKey3Down())){//°´ÏÂS3ÖØÖÃÊ±ÖÓÎª0·Ö0Ãë
+ 181   3            Delay20ms();  //°´¼üÏû¶¶
+ 182   3            key3DownFlag=1;
+ 183   3            Pcf8563SetSecond(0);
+ 184   3            Pcf8563SetMinute(0);
+ 185   3          }else if((key3DownFlag==1)&&(!(IsKey3Down()))){
+ 186   3            Delay20ms();  //°´¼üÏûf¶¶
+ 187   3            key3DownFlag=0;
+ 188   3          }
+ 189   2          second=Pcf8563GetSecond();//¶ÁÈ¡Ãë
+ 190   2          minute=Pcf8563GetMinute();//¶ÁÈ¡·Ö
+ 191   2          //ÏÔÊ¾Îª¡°·ÖÖÓ.ÃëÖÖ¡±
+ 192   2          dat=(minute<<8)|second;
+ 193   2          //SetNumDisplayHex16(dat);
+ 194   2          minuteDec = (((minute&0xf0)>>4)*10 + (minute&0x0f));
+ 195   2          secondDec = (((second&0xf0)>>4)*10 + (second&0x0f));
+ 196   2          
+ 197   2          //P05:A2 1 P06:A1 2 P26:A0 4
+ 198   2          //ADS
+ 199   2          
+ 200   2          for(i = 0; i < 8; i++) {
+ 201   3            switch(i) {
+ 202   4              case 0:
+ 203   4                P05 = 0;
+ 204   4                P06 = 0;
+ 205   4                P26 = 0;
+ 206   4                for(j = 0; j < 10; j++){
+ 207   5                  result1=ADS1110_ReadADValue();
+ 208   5                  DelayForAD();
+ 209   5                }
+ 210   4                break;
+ 211   4              case 1:
+ 212   4                P05 = 1;
+ 213   4                P06 = 0;
+ 214   4                P26 = 0;
+ 215   4                for(j = 0; j < 10; j++){
+ 216   5                  result2=ADS1110_ReadADValue();
+ 217   5                  DelayForAD();
+ 218   5                }
+ 219   4                break;
+ 220   4              case 2:
+ 221   4                P05 = 0;
+ 222   4                P06 = 1;
+ 223   4                P26 = 0;
+ 224   4                for(j = 0; j < 10; j++){
+ 225   5                  result3=ADS1110_ReadADValue();
+ 226   5                  DelayForAD();
+ 227   5                }
+ 228   4                break;
+ 229   4              case 3:
+ 230   4                P05 = 1;
+ 231   4                P06 = 1;
+ 232   4                P26 = 0;
+ 233   4                for(j = 0; j < 10; j++){
+ 234   5                  result4=ADS1110_ReadADValue();
+ 235   5                  DelayForAD();
+ 236   5                }
+ 237   4                break;
+ 238   4              case 4:
+C51 COMPILER V9.53.0.0   MAIN                                                              12/29/2018 16:30:00 PAGE 5   
+
+ 239   4                P05 = 0;
+ 240   4                P06 = 0;
+ 241   4                P26 = 1;
+ 242   4                for(j = 0; j < 10; j++){
+ 243   5                  result5=ADS1110_ReadADValue();
+ 244   5                  DelayForAD();
+ 245   5                }
+ 246   4                break;
+ 247   4              case 5:
+ 248   4                P05 = 1;
+ 249   4                P06 = 0;
+ 250   4                P26 = 1;
+ 251   4                for(j = 0; j < 10; j++){
+ 252   5                  result6=ADS1110_ReadADValue();
+ 253   5                  DelayForAD();
+ 254   5                }
+ 255   4                SetNumDisplayHex16(result6);
+ 256   4                break;
+ 257   4              case 6:
+ 258   4                P05 = 0;
+ 259   4                P06 = 1;
+ 260   4                P26 = 1;
+ 261   4                Delay20ms();
+ 262   4                for(j = 0; j < 10; j++){
+ 263   5                  result7=ADS1110_ReadADValue();
+ 264   5                  DelayForAD();
+ 265   5                }
+ 266   4                break;
+ 267   4              case 7:
+ 268   4                P05 = 1;
+ 269   4                P06 = 1;
+ 270   4                P26 = 1;
+ 271   4                for(j = 0; j < 10; j++){
+ 272   5                  result8=ADS1110_ReadADValue();
+ 273   5                  DelayForAD();
+ 274   5                }
+ 275   4                break;
+ 276   4            }
+ 277   3          }
+ 278   2          
+ 279   2          
+ 280   2          /*
+ 281   2          for(i = 0; i < 5; i++) {
+ 282   2            Delay20ms();
+ 283   2          }
+ 284   2          */
+ 285   2          /*
+ 286   2          P05 = 1;
+ 287   2          P06 = 0;
+ 288   2          P26 = 1;
+ 289   2          Delay20ms();
+ 290   2          result=ADS1110_ReadADValue();
+ 291   2          SetNumDisplayHex16(result);
+ 292   2          */
+ 293   2          
+ 294   2          sprintf(Data_Buffer,"%02d-%02d-%02d-%02d-%02d-",result1,result2,result3,result4,result5);
+ 295   2          sprintf(Data_Buffer2,"%02d-%02d-%02d-%02d-%02d OK\r\n",result6,result7,result8,(int)minuteDec,(int)secon
+             -dDec);
+ 296   2          
+ 297   2          
+ 298   2          if(!SD_STATUS&&SD_BUSY) {
+ 299   3            U3SendString(Data_Buffer);
+C51 COMPILER V9.53.0.0   MAIN                                                              12/29/2018 16:30:00 PAGE 6   
+
+ 300   3            U3SendString(Data_Buffer2);
+ 301   3          }
+ 302   2          Led2Tog();                                                                                              
+             -                                                                                                                        
+             -                                                                                                                        
+             -                                                
+ 303   2        } 
+ 304   1      }
+*** WARNING C280 IN LINE 148 OF main.c: 'adcNum': unreferenced local variable
+*** WARNING C280 IN LINE 158 OF main.c: 'result': unreferenced local variable
+ 305          
+ 306          void Uart3ISR(void) interrupt 17
+ 307          {
+ 308   1        if(S3CON&0x02){     //¼ì²é´®¿Ú3·¢ËÍ±êÖ¾Î»
+ 309   2          S3CON&=(~0x02);   //Çå³ý·¢ËÍ±êÖ¾Î»
+ 310   2          uart3SendingFlag=0;
+ 311   2        }else if(S3CON&0x01){ //¼ì²é´®¿Ú3½ÓÊÕ±êÖ¾Î»
+ 312   2          S3CON&=(~0x01);   //Çå³ý½ÓÊÕ±êÖ¾Î»
+ 313   2          uart3Buf=S3BUF;
+ 314   2          uart3ReceivedFlag=1;
+ 315   2        }
+ 316   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    741    ----
+   CONSTANT SIZE    =     56    ----
+   XDATA SIZE       =     90    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      3      35
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  4 WARNING(S),  0 ERROR(S)

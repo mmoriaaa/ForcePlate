@@ -1,0 +1,98 @@
+C51 COMPILER V9.53.0.0   PCF8563                                                           12/29/2018 16:30:00 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE PCF8563
+OBJECT MODULE PLACED IN pcf8563.OBJ
+COMPILER INVOKED BY: F:\Keil_v5\C51\BIN\C51.EXE pcf8563.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          /************************************************************************************
+   2          *
+   3          * 功能说明：本文件提供PCF8563的操作函数集合。
+   4          * 作者信息：品诺电子(http://free-design.taobao.com)
+   5          *
+   6          ************************************************************************************/
+   7          #include "my_type.h"
+   8          #include "i2c1.h"
+   9          
+  10          #define PCF8563_WRITE_ADDR 0xA2 //PCF8563的IIC写地址
+  11          
+  12          u8 Pcf8563GetSecond(void){//返回BCD编码的时间格式
+  13   1        u8 dat;
+  14   1        dat=I2CReadByteFromDevice8(PCF8563_WRITE_ADDR,0x02);//读取秒
+  15   1        return dat&0x7f;
+  16   1      }
+  17          
+  18          u8 Pcf8563GetMinute(void){//返回BCD编码的时间格式
+  19   1        u8 dat;
+  20   1        dat=I2CReadByteFromDevice8(PCF8563_WRITE_ADDR,0x03);//读取分
+  21   1        return dat&0x7f;
+  22   1      }
+  23          
+  24          u8 Pcf8563GetHoure(void){//返回BCD编码的时间格式
+  25   1        u8 dat;
+  26   1        dat=I2CReadByteFromDevice8(PCF8563_WRITE_ADDR,0x04);//读取时
+  27   1        return dat&0x3f;
+  28   1      }
+  29          
+  30          u8 Pcf8563GetDay(void){//返回BCD编码的时间格式
+  31   1        u8 dat;
+  32   1        dat=I2CReadByteFromDevice8(PCF8563_WRITE_ADDR,0x05);//读取日
+  33   1        return dat&0x3f;
+  34   1      }
+  35          
+  36          u8 Pcf8563GetWeek(void){//返回BCD编码的时间格式
+  37   1        u8 dat;
+  38   1        dat=I2CReadByteFromDevice8(PCF8563_WRITE_ADDR,0x06);//读取星期
+  39   1        return dat&0x07;
+  40   1      }
+  41          
+  42          u8 Pcf8563GetMonth(void){//返回BCD编码的时间格式
+  43   1        u8 dat;
+  44   1        dat=I2CReadByteFromDevice8(PCF8563_WRITE_ADDR,0x07);//读取月/世纪
+  45   1        return dat&0x1f;
+  46   1      }
+  47          
+  48          u16 Pcf8563GetYear(void){//返回BCD编码的时间格式
+  49   1        u16 dat;
+  50   1        u8 tmp;
+  51   1        tmp=I2CReadByteFromDevice8(PCF8563_WRITE_ADDR,0x07);//读取月/世纪
+  52   1        if(tmp&=0x80)
+  53   1          dat=0x2000;
+  54   1        else
+  55   1          dat=0x1900;
+C51 COMPILER V9.53.0.0   PCF8563                                                           12/29/2018 16:30:00 PAGE 2   
+
+  56   1        tmp=I2CReadByteFromDevice8(PCF8563_WRITE_ADDR,0x08);//读取年
+  57   1        dat|=tmp;
+  58   1        return dat;
+  59   1      }
+  60          
+  61          void Pcf8563SetSecond(u8 dat){
+  62   1        u8 bcdDat;
+  63   1        bcdDat=((dat/10)<<4)|(dat%10);
+  64   1        I2CWriteByteToDevice8(PCF8563_WRITE_ADDR,0x02,bcdDat);//写入秒
+  65   1      }
+  66          
+  67          void Pcf8563SetMinute(u8 dat){
+  68   1        u8 bcdDat;
+  69   1        bcdDat=((dat/10)<<4)|(dat%10);
+  70   1        I2CWriteByteToDevice8(PCF8563_WRITE_ADDR,0x03,bcdDat);//写入分
+  71   1      }
+  72          
+  73          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    160    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       2
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
